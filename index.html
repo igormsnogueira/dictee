@@ -35,16 +35,6 @@
     display:flex;flex-direction:column;
   }
 
-  /* ---- masthead ---- */
-  header{padding:26px 20px 16px;border-bottom:1px solid var(--rule)}
-  .eyebrow{
-    font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;
-    color:var(--margin);margin:0 0 6px;
-  }
-  h1{font-size:31px;font-weight:500;margin:0;letter-spacing:-.015em}
-  h1 em{font-style:italic;font-weight:300;color:var(--slate)}
-  .lede{font-size:14px;color:var(--slate);margin:8px 0 0;font-weight:300;line-height:1.45}
-
   /* ---- controls ---- */
   .controls{
     display:flex;flex-wrap:wrap;gap:8px;align-items:center;
@@ -158,7 +148,6 @@
   .warn.show{display:block}
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
   @media (max-width:420px){
-    h1{font-size:26px}
     .fr{font-size:19px}
     .controls{padding:10px 14px;gap:6px}
     .row{padding-left:48px;padding-right:14px}
@@ -169,12 +158,6 @@
 </head>
 <body>
 <div class="sheet">
-  <header>
-    <p class="eyebrow">Dictée · fr</p>
-    <h1>Tap a line, <em>hear it spoken</em></h1>
-    <p class="lede">Your sentences, read aloud by the voice on this device. Works offline once the voice is installed.</p>
-  </header>
-
   <div class="controls">
     <button class="btn" id="playAll">▶ Play all</button>
     <div class="stepper">
@@ -197,8 +180,8 @@
   <div class="list" id="list"></div>
 
   <footer>
-    On iPhone: Share → Add to Home Screen to keep it one tap away.<br>
-    Better voices: Settings → Accessibility → Spoken Content → Voices → Français (download an Enhanced voice).
+    <span id="srcLine"></span><br>
+    Better voices: Settings → Accessibility → Spoken Content → Voices → Français (download an Enhanced one).
   </footer>
 </div>
 
@@ -221,6 +204,8 @@
       <input type="file" id="file" accept=".txt,.md,.csv,text/plain" hidden>
       <button class="btn" id="import">↓ Import</button>
       <button class="btn" id="export">↑ Export</button>
+      <button class="btn" id="link">🔗 Save to link</button>
+      <button class="btn" id="reload">↻ content.txt</button>
       <span class="spacer"></span>
       <button class="btn on" id="save">Save list</button>
     </div>
@@ -239,13 +224,89 @@ const DEFAULTS = [
 
 const $ = id => document.getElementById(id);
 const listEl = $("list"), warnEl = $("warn");
-let rows = [], rate = 0.9, repeats = 2, voices = [], chosenVoice = "", playing = false, unlocked = false;
+let rows = [], rate = 1.0, repeats = 2, voices = [], chosenVoice = "", playing = false, unlocked = false;
+
+/* ---------- storage: artifact API when present, localStorage when self-hosted ---------- */
+const store = {
+  async get(k){
+    if(window.storage){
+      try{ const r = await window.storage.get(k); if(r && r.value != null) return r.value; }catch(e){}
+    }
+    try{ return localStorage.getItem(k); }catch(e){ return null; }
+  },
+  async set(k, v){
+    let ok = false;
+    if(window.storage){
+      try{ await window.storage.set(k, v); ok = true; }catch(e){}
+    }
+    try{ localStorage.setItem(k, v); ok = true; }catch(e){}
+    return ok;
+  },
+  async del(k){
+    if(window.storage){ try{ await window.storage.delete(k); }catch(e){} }
+    try{ localStorage.removeItem(k); }catch(e){}
+  }
+};
+
+/* ---------- the list encoded in the URL: survives anything iOS does ---------- */
+function encodeList(txt){
+  try{ return btoa(unescape(encodeURIComponent(txt))); }catch(e){ return ""; }
+}
+function decodeList(b64){
+  try{ return decodeURIComponent(escape(atob(b64))); }catch(e){ return ""; }
+}
+function listFromHash(){
+  const m = location.hash.match(/[#&]d=([^&]+)/);
+  if(!m) return null;
+  const txt = decodeList(decodeURIComponent(m[1])).trim();
+  return txt || null;
+}
+
+/* ---------- is localStorage actually usable here? ---------- */
+let storageWorks = false;
+function testStorage(){
+  try{
+    localStorage.setItem("dictee:probe", "1");
+    storageWorks = localStorage.getItem("dictee:probe") === "1";
+    localStorage.removeItem("dictee:probe");
+  }catch(e){ storageWorks = false; }
+  return storageWorks;
+}
+
+/* ---------- content.txt sitting next to this page ---------- */
+async function fetchContentFile(){
+  try{
+    const res = await fetch("content.txt?t=" + Date.now(), {cache:"no-store"});
+    if(!res.ok) return null;
+    const txt = (await res.text()).replace(/\r\n?/g, "\n").trim();
+    if(!txt || /^\s*</.test(txt)) return null;   // empty, or a 404 page
+    return txt;
+  }catch(e){ return null; }
+}
 
 /* ---------- persistence ---------- */
+let listSource = "samples";
 async function load(){
-  let raw = DEFAULTS, prefs = null;
-  try{ const r = await window.storage.get("dictee:sentences"); if(r?.value) raw = r.value; }catch(e){}
-  try{ const p = await window.storage.get("dictee:prefs"); if(p?.value) prefs = JSON.parse(p.value); }catch(e){}
+  let raw = null, prefs = null;
+  testStorage();
+
+  raw = listFromHash();                              // 1. the link itself
+  if(raw) listSource = "link";
+
+  if(!raw){
+    const saved = await store.get("dictee:sentences");
+    if(saved && saved.trim()){ raw = saved.trim(); listSource = "browser"; }
+  }
+
+  if(!raw){
+    raw = await fetchContentFile();                  // 3. the file on the server
+    if(raw) listSource = "content.txt";
+  }
+
+  if(!raw){ raw = DEFAULTS; listSource = "samples"; }
+
+  const p = await store.get("dictee:prefs");
+  if(p){ try{ prefs = JSON.parse(p); }catch(e){} }
   if(prefs){
     rate = prefs.rate ?? rate;
     repeats = prefs.repeats ?? repeats;
@@ -256,11 +317,24 @@ async function load(){
   savedRaw = raw;
   render(raw);
   syncLabels();
+  showSource();
+}
+
+function showSource(){
+  const n = savedRaw.split("\n").filter(l => l.trim()).length;
+  const label = {
+    link: "loaded from the link",
+    browser: "loaded from browser storage",
+    "content.txt": "loaded from content.txt",
+    samples: "sample sentences — nothing saved yet"
+  }[listSource];
+  $("srcLine").textContent = `${n} sentences · ${label}` +
+    (storageWorks ? "" : " · browser storage BLOCKED here");
 }
 async function savePrefs(){
-  try{ await window.storage.set("dictee:prefs", JSON.stringify({
+  await store.set("dictee:prefs", JSON.stringify({
     rate, repeats, voice: chosenVoice, hints: !document.body.classList.contains("no-hints")
-  })); }catch(e){}
+  }));
 }
 
 /* ---------- rendering ---------- */
@@ -391,8 +465,10 @@ $("save").onclick = async () => {
   savedRaw = raw;
   render(raw);
   $("editor").classList.remove("open");
-  try{ await window.storage.set("dictee:sentences", raw); }
-  catch(e){ warnEl.textContent = "Couldn't save the list — it'll last this session only."; warnEl.classList.add("show"); }
+  const ok = await store.set("dictee:sentences", raw);
+  listSource = ok ? "browser" : "samples";
+  showSource();
+  if(!ok) flash("Couldn't save — use 🔗 Save to link instead.");
 };
 document.addEventListener("keydown", e => {
   if(e.key === "Escape" && $("editor").classList.contains("open")) closeEditor();
@@ -402,12 +478,11 @@ document.addEventListener("keydown", e => {
 $("export").onclick = () => {
   const raw = $("text").value;
   if(!raw.trim()){ flash("Nothing to export yet."); return; }
-  const stamp = new Date().toISOString().slice(0,10);
   const blob = new Blob([raw], {type:"text/plain;charset=utf-8"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `dictee-${stamp}.txt`;
+  a.download = "content.txt";
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -452,9 +527,35 @@ async function applyImport(raw, name, n){
   $("text").value = raw;
   savedRaw = raw;
   render(raw);
-  try{ await window.storage.set("dictee:sentences", raw); }catch(err){}
-  flash(`Imported ${n} sentence${n === 1 ? "" : "s"} from ${name}.`);
+  const ok = await store.set("dictee:sentences", raw);
+  listSource = ok ? "browser" : "samples";
+  showSource();
+  flash(ok
+    ? `Imported ${n} sentence${n === 1 ? "" : "s"}. Tap 🔗 Save to link to make it permanent on iPhone.`
+    : `Imported ${n} sentence${n === 1 ? "" : "s"}, but this browser blocks storage — tap 🔗 Save to link.`);
 }
+
+$("link").onclick = () => {
+  const raw = $("text").value.trim();
+  if(!raw){ flash("Nothing to save yet."); return; }
+  location.hash = "d=" + encodeURIComponent(encodeList(raw));
+  savedRaw = raw;
+  render(raw);
+  listSource = "link";
+  showSource();
+  flash("Saved into this page's address. Now: Share → Add to Home Screen, and delete the old icon. That copy can't be cleared by iOS.");
+};
+
+$("reload").onclick = async () => {
+  const txt = await fetchContentFile();
+  if(!txt){ flash("No content.txt found next to this page (or it's empty)."); return; }
+  await store.del("dictee:sentences");
+  $("text").value = txt;
+  savedRaw = txt;
+  render(txt);
+  const n = txt.split("\n").filter(l => l.trim()).length;
+  flash(`Reloaded ${n} sentence${n === 1 ? "" : "s"} from content.txt.`);
+};
 
 function flash(msg){
   const inEditor = $("editor").classList.contains("open");
