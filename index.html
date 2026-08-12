@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Dictée — tap to hear</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,500;1,300&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#0B0B0C;
+    --ink:#F4F2ED;
+    --rule:#26262A;
+    --rule-strong:#3C3C43;
+    --margin:#E0637A;
+    --marker:rgba(245,224,140,.22);
+    --slate:#8A8A93;
+    --serif:"Spectral","Iowan Old Style",Palatino,Georgia,serif;
+    --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --line:34px;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:#000;color:var(--ink)}
+  body{
+    font-family:var(--serif);
+    padding:0 0 env(safe-area-inset-bottom);
+    display:flex;justify-content:center;
+  }
+  .sheet{
+    width:100%;max-width:720px;min-height:100vh;background:var(--paper);
+    box-shadow:0 0 0 1px rgba(255,255,255,.06);
+    display:flex;flex-direction:column;
+  }
+
+  /* ---- masthead ---- */
+  header{padding:26px 20px 16px;border-bottom:1px solid var(--rule)}
+  .eyebrow{
+    font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--margin);margin:0 0 6px;
+  }
+  h1{font-size:31px;font-weight:500;margin:0;letter-spacing:-.015em}
+  h1 em{font-style:italic;font-weight:300;color:var(--slate)}
+  .lede{font-size:14px;color:var(--slate);margin:8px 0 0;font-weight:300;line-height:1.45}
+
+  /* ---- controls ---- */
+  .controls{
+    display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+    padding:12px 20px;border-bottom:1px solid var(--rule);
+    position:sticky;top:0;background:var(--paper);z-index:5;
+  }
+  button,select{font-family:var(--mono);font-size:12px;color:var(--ink)}
+  .btn{
+    border:1px solid var(--rule-strong);background:transparent;border-radius:2px;
+    padding:8px 12px;cursor:pointer;letter-spacing:.04em;
+    transition:background .15s,border-color .15s;
+  }
+  .btn:hover{background:#1B1B1F}
+  .btn[aria-pressed="true"],.btn.on{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+  .btn:focus-visible,.row:focus-visible,select:focus-visible{outline:2px solid var(--margin);outline-offset:2px}
+  select{
+    border:1px solid var(--rule-strong);background-color:#141417;color:var(--ink);border-radius:2px;
+    padding:8px 6px;max-width:150px;-webkit-appearance:none;appearance:none;
+  }
+  .stepper{display:flex;align-items:center;border:1px solid var(--rule-strong);border-radius:2px}
+  .stepper span{font-family:var(--mono);font-size:11px;padding:0 9px;color:var(--slate);white-space:nowrap}
+  .stepper button{border:0;background:transparent;padding:8px 10px;cursor:pointer;font-size:14px;line-height:1}
+  .spacer{flex:1}
+
+  /* ---- ruled paper ---- */
+  .list{flex:1;position:relative;padding:6px 0 40px}
+  .row{
+    display:block;width:100%;text-align:left;border:0;background:transparent;
+    font-family:var(--serif);cursor:pointer;
+    padding:10px 20px 12px 54px;position:relative;
+    border-bottom:1px solid var(--rule);
+  }
+  .row::before{
+    content:"";position:absolute;left:38px;top:0;bottom:0;width:1px;background:var(--margin);opacity:.45;
+  }
+  .row .num{
+    position:absolute;left:0;top:14px;width:38px;text-align:center;
+    font-family:var(--mono);font-size:10px;color:var(--margin);opacity:.8;
+  }
+  .fr{
+    font-size:21px;line-height:1.42;font-weight:300;display:inline;
+    background-image:linear-gradient(var(--marker),var(--marker));
+    background-repeat:no-repeat;background-size:0% 62%;background-position:0 78%;
+    transition:background-size .22s ease;
+  }
+  .row.speaking{background:#131316}
+  .row.speaking .fr{background-size:100% 62%;color:#FFF6DC}
+  .row.speaking .num{opacity:1;font-weight:500}
+  .hint{
+    display:block;margin-top:5px;font-size:13px;font-style:italic;color:var(--slate);
+    font-weight:300;
+  }
+  body.no-hints .hint{visibility:hidden}
+  .empty{padding:40px 24px;color:var(--slate);font-size:15px;line-height:1.5;font-weight:300}
+
+  /* ---- editor ---- */
+  .editor{
+    position:fixed;inset:0;background:var(--paper);display:none;
+    align-items:stretch;justify-content:center;z-index:20;
+  }
+  .editor.open{display:flex}
+  .panel{
+    background:var(--paper);width:100%;max-width:720px;height:100%;
+    display:flex;flex-direction:column;gap:12px;
+    padding:calc(18px + env(safe-area-inset-top)) 20px calc(18px + env(safe-area-inset-bottom));
+  }
+  .panel-head{display:flex;align-items:flex-start;gap:12px}
+  .panel-head h2{flex:1}
+  .close{
+    border:1px solid var(--rule-strong);background:transparent;color:var(--ink);
+    width:36px;height:36px;flex:0 0 36px;border-radius:50%;cursor:pointer;
+    font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center;
+    transition:background .15s,border-color .15s;
+  }
+  .close:hover{background:#1B1B1F;border-color:var(--margin)}
+  .close:focus-visible{outline:2px solid var(--margin);outline-offset:2px}
+  .panel h2{margin:0;font-size:22px;font-weight:500}
+  .panel p{margin:0;font-size:13px;color:var(--slate);font-weight:300;line-height:1.5}
+  textarea{
+    flex:1;min-height:0;resize:none;padding:14px;border:1px solid var(--rule-strong);
+    border-radius:2px;font-family:var(--serif);font-size:17px;line-height:1.65;
+  }
+  .panel textarea#text{
+    -webkit-appearance:none;appearance:none;
+    background-color:#141417 !important;
+    background-image:none !important;
+    color:#F4F2ED !important;
+    -webkit-text-fill-color:#F4F2ED !important;
+    caret-color:#E0637A;
+  }
+  .panel textarea#text::placeholder{color:#6E6E76}
+  .panel textarea#text::selection{background:#E0637A;color:#0B0B0C}
+  textarea:focus{outline:2px solid var(--margin);outline-offset:-1px}
+  .panel-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .panel-msg{
+    display:none;font-family:var(--mono);font-size:12px;line-height:1.5;
+    color:var(--slate);border-left:2px solid var(--margin);padding:8px 10px;
+  }
+  .panel-msg.show{display:block}
+  .confirm-bar{
+    display:none;align-items:center;gap:8px;flex-wrap:wrap;
+    border:1px solid var(--margin);border-radius:2px;padding:10px 12px;
+    font-family:var(--mono);font-size:12px;line-height:1.5;color:var(--ink);
+  }
+  .confirm-bar.show{display:flex}
+  footer{padding:0 20px 28px;font-size:12px;color:var(--slate);font-weight:300;line-height:1.6}
+  .warn{
+    margin:0 20px 12px;padding:10px 12px;border-left:2px solid var(--margin);
+    font-size:13px;color:var(--slate);font-weight:300;line-height:1.5;display:none;
+  }
+  .warn.show{display:block}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+  @media (max-width:420px){
+    h1{font-size:26px}
+    .fr{font-size:19px}
+    .controls{padding:10px 14px;gap:6px}
+    .row{padding-left:48px;padding-right:14px}
+    .row::before{left:34px}
+    .row .num{width:34px}
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header>
+    <p class="eyebrow">Dictée · fr</p>
+    <h1>Tap a line, <em>hear it spoken</em></h1>
+    <p class="lede">Your sentences, read aloud by the voice on this device. Works offline once the voice is installed.</p>
+  </header>
+
+  <div class="controls">
+    <button class="btn" id="playAll">▶ Play all</button>
+    <div class="stepper">
+      <button id="rateDown" aria-label="Slower">−</button>
+      <span id="rateLabel">0.9×</span>
+      <button id="rateUp" aria-label="Faster">+</button>
+    </div>
+    <div class="stepper">
+      <button id="repDown" aria-label="Fewer repeats">−</button>
+      <span id="repLabel">×2</span>
+      <button id="repUp" aria-label="More repeats">+</button>
+    </div>
+    <select id="voice" aria-label="Voice"></select>
+    <button class="btn" id="hints" aria-pressed="true">Hints</button>
+    <div class="spacer"></div>
+    <button class="btn" id="edit">Edit list</button>
+  </div>
+
+  <p class="warn" id="warn"></p>
+  <div class="list" id="list"></div>
+
+  <footer>
+    On iPhone: Share → Add to Home Screen to keep it one tap away.<br>
+    Better voices: Settings → Accessibility → Spoken Content → Voices → Français (download an Enhanced voice).
+  </footer>
+</div>
+
+<div class="editor" id="editor">
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Edit your sentences</h2>
+      <button class="close" id="close" aria-label="Close editor">✕</button>
+    </div>
+    <p>One per line. Add a translation or note after <strong>=</strong> — only the French part is spoken.</p>
+    <textarea id="text" spellcheck="false"></textarea>
+    <div class="panel-msg" id="panelMsg"></div>
+    <div class="confirm-bar" id="confirmBar">
+      <span id="confirmText"></span>
+      <span class="spacer"></span>
+      <button class="btn" id="confirmNo">Cancel</button>
+      <button class="btn on" id="confirmYes">Replace all</button>
+    </div>
+    <div class="panel-actions">
+      <input type="file" id="file" accept=".txt,.md,.csv,text/plain" hidden>
+      <button class="btn" id="import">↓ Import</button>
+      <button class="btn" id="export">↑ Export</button>
+      <span class="spacer"></span>
+      <button class="btn on" id="save">Save list</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DEFAULTS = [
+  "Je voudrais un café, s'il vous plaît. = I'd like a coffee, please.",
+  "Il faut que je m'en aille. = I have to get going.",
+  "Ça ne me dérange pas du tout. = It doesn't bother me at all.",
+  "J'aurais dû t'en parler plus tôt. = I should have told you sooner.",
+  "On se retrouve devant la gare vers midi. = Let's meet in front of the station around noon.",
+  "Je n'y avais jamais pensé comme ça. = I'd never thought about it that way."
+].join("\n");
+
+const $ = id => document.getElementById(id);
+const listEl = $("list"), warnEl = $("warn");
+let rows = [], rate = 0.9, repeats = 2, voices = [], chosenVoice = "", playing = false, unlocked = false;
+
+/* ---------- persistence ---------- */
+async function load(){
+  let raw = DEFAULTS, prefs = null;
+  try{ const r = await window.storage.get("dictee:sentences"); if(r?.value) raw = r.value; }catch(e){}
+  try{ const p = await window.storage.get("dictee:prefs"); if(p?.value) prefs = JSON.parse(p.value); }catch(e){}
+  if(prefs){
+    rate = prefs.rate ?? rate;
+    repeats = prefs.repeats ?? repeats;
+    chosenVoice = prefs.voice ?? "";
+    if(prefs.hints === false) toggleHints(false);
+  }
+  $("text").value = raw;
+  savedRaw = raw;
+  render(raw);
+  syncLabels();
+}
+async function savePrefs(){
+  try{ await window.storage.set("dictee:prefs", JSON.stringify({
+    rate, repeats, voice: chosenVoice, hints: !document.body.classList.contains("no-hints")
+  })); }catch(e){}
+}
+
+/* ---------- rendering ---------- */
+function render(raw){
+  const lines = raw.split("\n").map(l => l.trim()).filter(Boolean);
+  listEl.innerHTML = "";
+  rows = [];
+  if(!lines.length){
+    listEl.innerHTML = '<p class="empty">No sentences yet. Tap <strong>Edit list</strong> and paste the ones that keep slipping away.</p>';
+    return;
+  }
+  lines.forEach((line, i) => {
+    const parts = line.split(/\s+[=|]\s+/);
+    const fr = parts[0].trim();
+    const hint = parts.slice(1).join(" — ").trim();
+    const b = document.createElement("button");
+    b.className = "row";
+    b.type = "button";
+    b.innerHTML = `<span class="num">${String(i+1).padStart(2,"0")}</span>
+      <span class="fr"></span>${hint ? '<span class="hint"></span>' : ""}`;
+    b.querySelector(".fr").textContent = fr;
+    if(hint) b.querySelector(".hint").textContent = hint;
+    b.addEventListener("click", () => { stop(); speakRow(i); });
+    b.dataset.text = fr;
+    listEl.appendChild(b);
+    rows.push(b);
+  });
+}
+
+/* ---------- speech ---------- */
+function frenchVoices(){
+  const all = speechSynthesis.getVoices();
+  const fr = all.filter(v => /^fr/i.test(v.lang));
+  return fr.length ? fr : all;
+}
+function fillVoices(){
+  voices = frenchVoices();
+  const sel = $("voice");
+  sel.innerHTML = "";
+  if(!voices.length){
+    sel.innerHTML = '<option>Default</option>';
+    return;
+  }
+  voices.forEach(v => {
+    const o = document.createElement("option");
+    o.value = v.name;
+    o.textContent = v.name.replace(/\s*\(.*\)/,"") + (/fr/i.test(v.lang) ? "" : " ⚠");
+    sel.appendChild(o);
+  });
+  const preferred = voices.find(v => v.name === chosenVoice)
+    || voices.find(v => /thomas|amélie|amelie|audrey|denise|henri|marie/i.test(v.name))
+    || voices.find(v => /^fr/i.test(v.lang));
+  if(preferred){ chosenVoice = preferred.name; sel.value = preferred.name; }
+  if(!voices.some(v => /^fr/i.test(v.lang))){
+    warnEl.textContent = "No French voice found on this device. Install one in your system speech settings, then reload.";
+    warnEl.classList.add("show");
+  } else warnEl.classList.remove("show");
+}
+function utter(text){
+  const u = new SpeechSynthesisUtterance(text);
+  const v = voices.find(x => x.name === chosenVoice);
+  if(v) u.voice = v;
+  u.lang = v?.lang || "fr-FR";
+  u.rate = rate;
+  return u;
+}
+function speakRow(i, onDone){
+  const row = rows[i];
+  if(!row) return;
+  row.classList.add("speaking");
+  row.scrollIntoView({block:"nearest", behavior:"smooth"});
+  let n = 0;
+  const go = () => {
+    n++;
+    const u = utter(row.dataset.text);
+    u.onend = () => {
+      if(n < repeats && (playing || !onDone)) setTimeout(go, 320);
+      else { row.classList.remove("speaking"); onDone && onDone(); }
+    };
+    u.onerror = () => { row.classList.remove("speaking"); onDone && onDone(); };
+    speechSynthesis.speak(u);
+  };
+  go();
+}
+function stop(){
+  playing = false;
+  speechSynthesis.cancel();
+  rows.forEach(r => r.classList.remove("speaking"));
+  $("playAll").textContent = "▶ Play all";
+  $("playAll").classList.remove("on");
+}
+function playAll(){
+  if(playing){ stop(); return; }
+  playing = true;
+  $("playAll").textContent = "■ Stop";
+  $("playAll").classList.add("on");
+  let i = 0;
+  const next = () => {
+    if(!playing || i >= rows.length){ stop(); return; }
+    const cur = i++;
+    speakRow(cur, () => setTimeout(next, 500));
+  };
+  next();
+}
+
+/* ---------- controls ---------- */
+function syncLabels(){
+  $("rateLabel").textContent = rate.toFixed(1) + "×";
+  $("repLabel").textContent = "×" + repeats;
+}
+function toggleHints(on){
+  document.body.classList.toggle("no-hints", !on);
+  $("hints").setAttribute("aria-pressed", String(on));
+}
+$("rateUp").onclick = () => { rate = Math.min(1.6, +(rate+0.1).toFixed(1)); syncLabels(); savePrefs(); };
+$("rateDown").onclick = () => { rate = Math.max(0.4, +(rate-0.1).toFixed(1)); syncLabels(); savePrefs(); };
+$("repUp").onclick = () => { repeats = Math.min(5, repeats+1); syncLabels(); savePrefs(); };
+$("repDown").onclick = () => { repeats = Math.max(1, repeats-1); syncLabels(); savePrefs(); };
+$("voice").onchange = e => { chosenVoice = e.target.value; savePrefs(); };
+$("hints").onclick = () => { toggleHints(document.body.classList.contains("no-hints")); savePrefs(); };
+$("playAll").onclick = playAll;
+let savedRaw = "";
+function closeEditor(){ $("text").value = savedRaw; $("editor").classList.remove("open"); }
+$("edit").onclick = () => { stop(); $("text").value = savedRaw; $("editor").classList.add("open"); };
+$("close").onclick = closeEditor;
+$("save").onclick = async () => {
+  const raw = $("text").value;
+  savedRaw = raw;
+  render(raw);
+  $("editor").classList.remove("open");
+  try{ await window.storage.set("dictee:sentences", raw); }
+  catch(e){ warnEl.textContent = "Couldn't save the list — it'll last this session only."; warnEl.classList.add("show"); }
+};
+document.addEventListener("keydown", e => {
+  if(e.key === "Escape" && $("editor").classList.contains("open")) closeEditor();
+});
+
+/* ---------- import / export ---------- */
+$("export").onclick = () => {
+  const raw = $("text").value;
+  if(!raw.trim()){ flash("Nothing to export yet."); return; }
+  const stamp = new Date().toISOString().slice(0,10);
+  const blob = new Blob([raw], {type:"text/plain;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `dictee-${stamp}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+};
+
+$("import").onclick = () => $("file").click();
+
+let pendingImport = null;
+
+$("file").onchange = async e => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if(!f) return;
+  let raw;
+  try{
+    raw = (await f.text()).replace(/\r\n?/g, "\n").trim();
+  }catch(err){
+    flash("Couldn't read that file. Plain .txt works best.");
+    return;
+  }
+  if(!raw){ flash("That file was empty — nothing imported."); return; }
+  const n = raw.split("\n").filter(l => l.trim()).length;
+  const existing = $("text").value.split("\n").filter(l => l.trim()).length;
+  if(!existing){ applyImport(raw, f.name, n); return; }
+  pendingImport = {raw, name: f.name, n};
+  $("confirmText").textContent =
+    `Replace all ${existing} sentence${existing === 1 ? "" : "s"} with ${n} from ${f.name}?`;
+  $("confirmBar").classList.add("show");
+};
+
+$("confirmNo").onclick = () => { pendingImport = null; $("confirmBar").classList.remove("show"); };
+$("confirmYes").onclick = () => {
+  if(!pendingImport) return;
+  const {raw, name, n} = pendingImport;
+  pendingImport = null;
+  $("confirmBar").classList.remove("show");
+  applyImport(raw, name, n);
+};
+
+async function applyImport(raw, name, n){
+  $("text").value = raw;
+  savedRaw = raw;
+  render(raw);
+  try{ await window.storage.set("dictee:sentences", raw); }catch(err){}
+  flash(`Imported ${n} sentence${n === 1 ? "" : "s"} from ${name}.`);
+}
+
+function flash(msg){
+  const inEditor = $("editor").classList.contains("open");
+  const el = inEditor ? $("panelMsg") : warnEl;
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(flash.t);
+  flash.t = setTimeout(() => el.classList.remove("show"), 5000);
+}
+
+/* iOS needs one utterance from a real tap before it will speak */
+document.addEventListener("touchstart", () => {
+  if(unlocked) return;
+  unlocked = true;
+  const u = new SpeechSynthesisUtterance(" ");
+  u.volume = 0;
+  speechSynthesis.speak(u);
+}, {once:true});
+
+speechSynthesis.onvoiceschanged = fillVoices;
+fillVoices();
+setTimeout(fillVoices, 400);
+load();
+</script>
+</body>
+</html>
