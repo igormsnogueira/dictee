@@ -447,12 +447,13 @@ function speakRow(i, onDone){
   if(focusMode) setCurrent(i, false);
   row.classList.add("speaking");
   row.scrollIntoView({block:"nearest", behavior:"smooth"});
+  const times = Math.max(1, repeats);
   let n = 0;
   const go = () => {
     n++;
     const u = utter(row.dataset.text);
     u.onend = () => {
-      if(n < repeats && (playing || !onDone)) setTimeout(go, 320);
+      if(n < times && (playing || !onDone)) setTimeout(go, 320);
       else { row.classList.remove("speaking"); onDone && onDone(); }
     };
     u.onerror = () => { row.classList.remove("speaking"); onDone && onDone(); };
@@ -488,7 +489,7 @@ function setCurrent(i, speak){
   cursor = Math.max(0, Math.min(rows.length - 1, i));
   rows.forEach((r, k) => r.classList.toggle("current", k === cursor));
   $("count").textContent = (cursor + 1) + " / " + rows.length;
-  if(speak){ stop(); speakRow(cursor); }
+  if(speak && repeats > 0){ stop(); speakRow(cursor); }
 }
 function toggleFocus(on){
   focusMode = on;
@@ -505,7 +506,7 @@ $("focus").onclick = () => toggleFocus(!focusMode);
 /* ---------- toggles ---------- */
 function syncLabels(){
   $("rateLabel").textContent = rate.toFixed(1) + "×";
-  $("repLabel").textContent = "×" + repeats;
+  $("repLabel").textContent = repeats === 0 ? "tap" : "×" + repeats;
 }
 function toggleHints(on){
   document.body.classList.toggle("no-hints", !on);
@@ -531,7 +532,7 @@ $("hints").onclick = () => { toggleHints(document.body.classList.contains("no-hi
 $("rateUp").onclick = () => { rate = Math.min(1.6, +(rate+0.1).toFixed(1)); syncLabels(); savePrefs(); };
 $("rateDown").onclick = () => { rate = Math.max(0.4, +(rate-0.1).toFixed(1)); syncLabels(); savePrefs(); };
 $("repUp").onclick = () => { repeats = Math.min(5, repeats+1); syncLabels(); savePrefs(); };
-$("repDown").onclick = () => { repeats = Math.max(1, repeats-1); syncLabels(); savePrefs(); };
+$("repDown").onclick = () => { repeats = Math.max(0, repeats-1); syncLabels(); savePrefs(); };
 $("voice").onchange = e => { chosenVoice = e.target.value; savePrefs(); };
 $("playAll").onclick = playAll;
 
