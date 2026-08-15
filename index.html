@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Dictée — tap to hear</title>
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>Dictée</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,500;1,300&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -19,137 +20,173 @@
     --slate:#8A8A93;
     --serif:"Spectral","Iowan Old Style",Palatino,Georgia,serif;
     --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
-    --line:34px;
     color-scheme:dark;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;background:#000;color:var(--ink)}
-  body{
-    font-family:var(--serif);
-    padding:0 0 env(safe-area-inset-bottom);
-    display:flex;justify-content:center;
-  }
+  body{font-family:var(--serif);display:flex;justify-content:center;padding:0}
   .sheet{
     width:100%;max-width:720px;min-height:100vh;background:var(--paper);
-    box-shadow:0 0 0 1px rgba(255,255,255,.06);
-    display:flex;flex-direction:column;
+    box-shadow:0 0 0 1px rgba(255,255,255,.06);display:flex;flex-direction:column;
   }
 
   /* ---- controls ---- */
   .controls{
-    display:flex;flex-wrap:wrap;gap:8px;align-items:center;
-    padding:12px 20px;border-bottom:1px solid var(--rule);
+    display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+    padding:calc(10px + env(safe-area-inset-top)) 14px 10px;
+    border-bottom:1px solid var(--rule);
     position:sticky;top:0;background:var(--paper);z-index:5;
   }
   button,select{font-family:var(--mono);font-size:12px;color:var(--ink)}
   .btn{
     border:1px solid var(--rule-strong);background:transparent;border-radius:2px;
-    padding:8px 12px;cursor:pointer;letter-spacing:.04em;
-    transition:background .15s,border-color .15s;
+    padding:8px 11px;cursor:pointer;letter-spacing:.03em;
+    transition:background .15s,border-color .15s,color .15s;
   }
   .btn:hover{background:#1B1B1F}
   .btn[aria-pressed="true"],.btn.on{background:var(--ink);border-color:var(--ink);color:var(--paper)}
-  .btn:focus-visible,.row:focus-visible,select:focus-visible{outline:2px solid var(--margin);outline-offset:2px}
+  .btn:focus-visible,.row:focus-visible,select:focus-visible,.close:focus-visible{
+    outline:2px solid var(--margin);outline-offset:2px}
   select{
-    border:1px solid var(--rule-strong);background-color:#141417;color:var(--ink);border-radius:2px;
-    padding:8px 6px;max-width:150px;-webkit-appearance:none;appearance:none;
+    border:1px solid var(--rule-strong);background-color:#141417;color:var(--ink);
+    border-radius:2px;padding:8px 6px;max-width:168px;-webkit-appearance:none;appearance:none;
   }
   .stepper{display:flex;align-items:center;border:1px solid var(--rule-strong);border-radius:2px}
-  .stepper span{font-family:var(--mono);font-size:11px;padding:0 9px;color:var(--slate);white-space:nowrap}
-  .stepper button{border:0;background:transparent;padding:8px 10px;cursor:pointer;font-size:14px;line-height:1}
+  .stepper span{font-family:var(--mono);font-size:11px;padding:0 8px;color:var(--slate);white-space:nowrap}
+  .stepper button{border:0;background:transparent;padding:8px 9px;cursor:pointer;font-size:14px;line-height:1;color:var(--ink)}
   .spacer{flex:1}
 
-  /* ---- ruled paper ---- */
-  .list{flex:1;position:relative;padding:6px 0 40px}
+  /* ---- the list ---- */
+  .list{flex:1;position:relative;padding:6px 0 30px}
   .row{
-    display:block;width:100%;text-align:left;border:0;background:transparent;
+    width:100%;text-align:left;border:0;background:transparent;color:var(--ink);
     font-family:var(--serif);cursor:pointer;
-    padding:10px 20px 12px 54px;position:relative;
+    padding:12px 20px 14px 54px;position:relative;
     border-bottom:1px solid var(--rule);
+    display:flex;flex-direction:column;gap:5px;
   }
-  .row::before{
-    content:"";position:absolute;left:38px;top:0;bottom:0;width:1px;background:var(--margin);opacity:.45;
-  }
+  .row::before{content:"";position:absolute;left:38px;top:0;bottom:0;width:1px;background:var(--margin);opacity:.45}
   .row .num{
-    position:absolute;left:0;top:14px;width:38px;text-align:center;
+    position:absolute;left:0;top:15px;width:38px;text-align:center;
     font-family:var(--mono);font-size:10px;color:var(--margin);opacity:.8;
   }
-  .fr{
-    font-size:21px;line-height:1.42;font-weight:300;display:inline;
+  /* primary / secondary are assigned by the swap toggle */
+  .fr,.hint{margin:0}
+  .fr{order:1}
+  .hint{order:2}
+  body.swap .fr{order:2}
+  body.swap .hint{order:1}
+
+  .fr{font-size:21px;line-height:1.4;font-weight:300;align-self:flex-start;
     background-image:linear-gradient(var(--marker),var(--marker));
     background-repeat:no-repeat;background-size:0% 62%;background-position:0 78%;
-    transition:background-size .22s ease;
-  }
+    transition:background-size .22s ease;}
+  .hint{font-size:13.5px;line-height:1.45;font-style:italic;font-weight:300;color:var(--slate)}
+  body.swap .fr{font-size:13.5px;font-style:italic;color:var(--slate);background-image:none}
+  body.swap .hint{
+    font-size:21px;font-style:normal;color:var(--ink);align-self:flex-start;
+    background-image:linear-gradient(var(--marker),var(--marker));
+    background-repeat:no-repeat;background-size:0% 62%;background-position:0 78%;
+    transition:background-size .22s ease;}
+
   .row.speaking{background:#131316}
   .row.speaking .fr{background-size:100% 62%;color:#FFF6DC}
+  body.swap .row.speaking .fr{background-size:0;color:var(--slate)}
+  body.swap .row.speaking .hint{background-size:100% 62%;color:#FFF6DC}
   .row.speaking .num{opacity:1;font-weight:500}
-  .hint{
-    display:block;margin-top:5px;font-size:13px;font-style:italic;color:var(--slate);
-    font-weight:300;
-  }
+
+  /* hide the secondary line — whichever it currently is */
   body.no-hints .hint{visibility:hidden}
+  body.no-hints.swap .hint{visibility:visible}
+  body.no-hints.swap .fr{visibility:hidden}
+
+  /* ---- one-by-one mode ---- */
+  body.focus .row{display:none}
+  body.focus .row.current{
+    display:flex;min-height:46vh;justify-content:center;
+    border-bottom:0;padding:24px 22px 24px 54px;
+  }
+  body.focus .row.current .fr,body.focus .row.current .hint{align-self:flex-start}
+  body.focus .row.current .fr{font-size:27px;line-height:1.35}
+  body.swap.focus .row.current .hint{font-size:27px;line-height:1.35}
+  body.swap.focus .row.current .fr{font-size:15px}
+  body.focus .row.current .hint{font-size:15px}
+  .nav{display:none;gap:8px;align-items:center;padding:12px 14px calc(16px + env(safe-area-inset-bottom));
+    border-top:1px solid var(--rule);position:sticky;bottom:0;background:var(--paper)}
+  body.focus .nav{display:flex}
+  .nav .btn{flex:1;padding:14px 10px;font-size:14px}
+  .nav .count{font-family:var(--mono);font-size:12px;color:var(--slate);min-width:66px;text-align:center}
   .empty{padding:40px 24px;color:var(--slate);font-size:15px;line-height:1.5;font-weight:300}
 
   /* ---- editor ---- */
-  .editor{
-    position:fixed;inset:0;background:var(--paper);display:none;
-    align-items:stretch;justify-content:center;z-index:20;
-  }
+  .editor{position:fixed;inset:0;background:var(--paper);display:none;align-items:stretch;justify-content:center;z-index:20}
   .editor.open{display:flex}
   .panel{
     background:var(--paper);width:100%;max-width:720px;height:100%;
-    display:flex;flex-direction:column;gap:12px;
-    padding:calc(18px + env(safe-area-inset-top)) 20px calc(18px + env(safe-area-inset-bottom));
+    display:flex;flex-direction:column;gap:11px;
+    padding:calc(16px + env(safe-area-inset-top)) 18px calc(16px + env(safe-area-inset-bottom));
   }
   .panel-head{display:flex;align-items:flex-start;gap:12px}
-  .panel-head h2{flex:1}
+  .panel-head h2{flex:1;margin:0;font-size:21px;font-weight:500}
   .close{
     border:1px solid var(--rule-strong);background:transparent;color:var(--ink);
-    width:36px;height:36px;flex:0 0 36px;border-radius:50%;cursor:pointer;
-    font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center;
-    transition:background .15s,border-color .15s;
+    width:36px;height:36px;flex:0 0 36px;border-radius:50%;cursor:pointer;font-size:17px;
+    display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s;
   }
   .close:hover{background:#1B1B1F;border-color:var(--margin)}
-  .close:focus-visible{outline:2px solid var(--margin);outline-offset:2px}
-  .panel h2{margin:0;font-size:22px;font-weight:500}
   .panel p{margin:0;font-size:13px;color:var(--slate);font-weight:300;line-height:1.5}
-  textarea{
-    flex:1;min-height:0;resize:none;padding:14px;border:1px solid var(--rule-strong);
-    border-radius:2px;font-family:var(--serif);font-size:17px;line-height:1.65;
-  }
+  textarea{flex:1;min-height:0;resize:none;padding:14px;border:1px solid var(--rule-strong);
+    border-radius:2px;font-family:var(--serif);font-size:17px;line-height:1.65}
   .panel textarea#text{
     -webkit-appearance:none;appearance:none;
-    background-color:#141417 !important;
-    background-image:none !important;
-    color:#F4F2ED !important;
-    -webkit-text-fill-color:#F4F2ED !important;
-    caret-color:#E0637A;
+    background-color:#141417 !important;background-image:none !important;
+    color:#F4F2ED !important;-webkit-text-fill-color:#F4F2ED !important;caret-color:#E0637A;
   }
-  .panel textarea#text::placeholder{color:#6E6E76}
-  .panel textarea#text::selection{background:#E0637A;color:#0B0B0C}
-  textarea:focus{outline:2px solid var(--margin);outline-offset:-1px}
-  .panel-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .panel-msg{
-    display:none;font-family:var(--mono);font-size:12px;line-height:1.5;
-    color:var(--slate);border-left:2px solid var(--margin);padding:8px 10px;
-  }
+  .panel-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+  .panel-msg{display:none;font-family:var(--mono);font-size:12px;line-height:1.5;
+    color:var(--slate);border-left:2px solid var(--margin);padding:8px 10px}
   .panel-msg.show{display:block}
-  .confirm-bar{
-    display:none;align-items:center;gap:8px;flex-wrap:wrap;
+  .confirm-bar{display:none;align-items:center;gap:8px;flex-wrap:wrap;
     border:1px solid var(--margin);border-radius:2px;padding:10px 12px;
-    font-family:var(--mono);font-size:12px;line-height:1.5;color:var(--ink);
-  }
+    font-family:var(--mono);font-size:12px;line-height:1.5}
   .confirm-bar.show{display:flex}
-  footer{padding:0 20px 28px;font-size:12px;color:var(--slate);font-weight:300;line-height:1.6}
-  .warn{
-    margin:0 20px 12px;padding:10px 12px;border-left:2px solid var(--margin);
-    font-size:13px;color:var(--slate);font-weight:300;line-height:1.5;display:none;
-  }
+  footer{padding:0 18px 26px;font-size:11.5px;color:var(--slate);font-weight:300;line-height:1.7;font-family:var(--mono)}
+  body.focus footer{display:none}
+  .warn{margin:0 18px 10px;padding:9px 11px;border-left:2px solid var(--margin);
+    font-size:12.5px;color:var(--slate);font-weight:300;line-height:1.5;display:none;font-family:var(--mono)}
   .warn.show{display:block}
-  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+  /* ---- light mode ---- */
+  html.light{
+    --paper:#FBFAF6;
+    --ink:#1B2A4A;
+    --rule:#C3D3E8;
+    --rule-strong:#9FB8D8;
+    --margin:#C4485E;
+    --marker:rgba(245,214,90,.75);
+    --slate:#5F6E88;
+    color-scheme:light;
+  }
+  html.light,html.light body{background:#E7E4DB}
+  html.light .sheet{box-shadow:0 0 0 1px rgba(27,42,74,.07)}
+  html.light .btn:hover{background:#E8EEF7}
+  html.light .close:hover{background:#E8EEF7}
+  html.light select{background-color:#fff}
+  html.light .row.speaking{background:#F3F0E7}
+  html.light .row.speaking .fr,
+  html.light body.swap .row.speaking .hint{color:#1B2A4A}
+  html.light body.swap .row.speaking .fr{color:var(--slate)}
+  html.light .panel textarea#text{
+    background-color:#FFFFFF !important;
+    color:#1B2A4A !important;
+    -webkit-text-fill-color:#1B2A4A !important;
+    caret-color:#C4485E;
+  }
+  html.light .panel textarea#text::selection{background:#C4485E;color:#fff}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
   @media (max-width:420px){
-    .fr{font-size:19px}
-    .controls{padding:10px 14px;gap:6px}
+    .fr,body.swap .hint{font-size:19px}
+    body.focus .row.current .fr,body.swap.focus .row.current .hint{font-size:23px}
     .row{padding-left:48px;padding-right:14px}
     .row::before{left:34px}
     .row .num{width:34px}
@@ -159,10 +196,10 @@
 <body>
 <div class="sheet">
   <div class="controls">
-    <button class="btn" id="playAll">▶ Play all</button>
+    <button class="btn" id="playAll">▶ All</button>
     <div class="stepper">
       <button id="rateDown" aria-label="Slower">−</button>
-      <span id="rateLabel">0.9×</span>
+      <span id="rateLabel">1.0×</span>
       <button id="rateUp" aria-label="Faster">+</button>
     </div>
     <div class="stepper">
@@ -171,17 +208,26 @@
       <button id="repUp" aria-label="More repeats">+</button>
     </div>
     <select id="voice" aria-label="Voice"></select>
-    <button class="btn" id="hints" aria-pressed="true">Hints</button>
-    <div class="spacer"></div>
-    <button class="btn" id="edit">Edit list</button>
+    <button class="btn" id="swap" aria-pressed="false">⇅ Flip</button>
+    <button class="btn" id="hints" aria-pressed="true">Show 2nd</button>
+    <button class="btn" id="focus" aria-pressed="false">One-by-one</button>
+    <button class="btn" id="theme" aria-label="Switch to light mode">☀</button>
+    <span class="spacer"></span>
+    <button class="btn" id="edit">Edit</button>
   </div>
 
   <p class="warn" id="warn"></p>
   <div class="list" id="list"></div>
 
+  <div class="nav">
+    <button class="btn" id="prev">‹ Prev</button>
+    <span class="count" id="count">1 / 1</span>
+    <button class="btn" id="next">Next ›</button>
+  </div>
+
   <footer>
     <span id="srcLine"></span><br>
-    Better voices: Settings → Accessibility → Spoken Content → Voices → Français (download an Enhanced one).
+    More voices: Settings → Accessibility → Spoken Content → Voices
   </footer>
 </div>
 
@@ -191,7 +237,7 @@
       <h2>Edit your sentences</h2>
       <button class="close" id="close" aria-label="Close editor">✕</button>
     </div>
-    <p>One per line. Add a translation or note after <strong>=</strong> — only the French part is spoken.</p>
+    <p>One per line. Put the spoken sentence first, then <strong>=</strong>, then the translation.</p>
     <textarea id="text" spellcheck="false"></textarea>
     <div class="panel-msg" id="panelMsg"></div>
     <div class="confirm-bar" id="confirmBar">
@@ -207,38 +253,29 @@
       <button class="btn" id="link">🔗 Save to link</button>
       <button class="btn" id="reload">↻ content.txt</button>
       <span class="spacer"></span>
-      <button class="btn on" id="save">Save list</button>
+      <button class="btn on" id="save">Save</button>
     </div>
   </div>
 </div>
 
 <script>
-const DEFAULTS = [
-  "Je voudrais un café, s'il vous plaît. = I'd like a coffee, please.",
-  "Il faut que je m'en aille. = I have to get going.",
-  "Ça ne me dérange pas du tout. = It doesn't bother me at all.",
-  "J'aurais dû t'en parler plus tôt. = I should have told you sooner.",
-  "On se retrouve devant la gare vers midi. = Let's meet in front of the station around noon.",
-  "Je n'y avais jamais pensé comme ça. = I'd never thought about it that way."
-].join("\n");
+const DEFAULTS = "Je m'appelle John. = My name is John.";
 
 const $ = id => document.getElementById(id);
 const listEl = $("list"), warnEl = $("warn");
-let rows = [], rate = 1.0, repeats = 2, voices = [], chosenVoice = "", playing = false, unlocked = false;
+let rows = [], rate = 1.0, repeats = 2, voices = [], chosenVoice = "";
+let playing = false, unlocked = false, savedRaw = "", listSource = "samples";
+let focusMode = false, cursor = 0, storageWorks = false;
 
-/* ---------- storage: artifact API when present, localStorage when self-hosted ---------- */
+/* ---------- storage ---------- */
 const store = {
   async get(k){
-    if(window.storage){
-      try{ const r = await window.storage.get(k); if(r && r.value != null) return r.value; }catch(e){}
-    }
+    if(window.storage){ try{ const r = await window.storage.get(k); if(r && r.value != null) return r.value; }catch(e){} }
     try{ return localStorage.getItem(k); }catch(e){ return null; }
   },
   async set(k, v){
     let ok = false;
-    if(window.storage){
-      try{ await window.storage.set(k, v); ok = true; }catch(e){}
-    }
+    if(window.storage){ try{ await window.storage.set(k, v); ok = true; }catch(e){} }
     try{ localStorage.setItem(k, v); ok = true; }catch(e){}
     return ok;
   },
@@ -247,71 +284,54 @@ const store = {
     try{ localStorage.removeItem(k); }catch(e){}
   }
 };
-
-/* ---------- the list encoded in the URL: survives anything iOS does ---------- */
-function encodeList(txt){
-  try{ return btoa(unescape(encodeURIComponent(txt))); }catch(e){ return ""; }
-}
-function decodeList(b64){
-  try{ return decodeURIComponent(escape(atob(b64))); }catch(e){ return ""; }
-}
-function listFromHash(){
-  const m = location.hash.match(/[#&]d=([^&]+)/);
-  if(!m) return null;
-  const txt = decodeList(decodeURIComponent(m[1])).trim();
-  return txt || null;
-}
-
-/* ---------- is localStorage actually usable here? ---------- */
-let storageWorks = false;
 function testStorage(){
   try{
-    localStorage.setItem("dictee:probe", "1");
+    localStorage.setItem("dictee:probe","1");
     storageWorks = localStorage.getItem("dictee:probe") === "1";
     localStorage.removeItem("dictee:probe");
   }catch(e){ storageWorks = false; }
   return storageWorks;
 }
-
-/* ---------- content.txt sitting next to this page ---------- */
+function encodeList(t){ try{ return btoa(unescape(encodeURIComponent(t))); }catch(e){ return ""; } }
+function decodeList(b){ try{ return decodeURIComponent(escape(atob(b))); }catch(e){ return ""; } }
+function listFromHash(){
+  const m = location.hash.match(/[#&]d=([^&]+)/);
+  if(!m) return null;
+  const t = decodeList(decodeURIComponent(m[1])).trim();
+  return t || null;
+}
 async function fetchContentFile(){
   try{
     const res = await fetch("content.txt?t=" + Date.now(), {cache:"no-store"});
     if(!res.ok) return null;
-    const txt = (await res.text()).replace(/\r\n?/g, "\n").trim();
-    if(!txt || /^\s*</.test(txt)) return null;   // empty, or a 404 page
-    return txt;
+    const t = (await res.text()).replace(/\r\n?/g,"\n").trim();
+    if(!t || /^\s*</.test(t)) return null;
+    return t;
   }catch(e){ return null; }
 }
 
-/* ---------- persistence ---------- */
-let listSource = "samples";
+/* ---------- load ---------- */
 async function load(){
-  let raw = null, prefs = null;
   testStorage();
-
-  raw = listFromHash();                              // 1. the link itself
+  let raw = listFromHash();
   if(raw) listSource = "link";
-
   if(!raw){
-    const saved = await store.get("dictee:sentences");
-    if(saved && saved.trim()){ raw = saved.trim(); listSource = "browser"; }
+    const s = await store.get("dictee:sentences");
+    if(s && s.trim()){ raw = s.trim(); listSource = "browser"; }
   }
-
-  if(!raw){
-    raw = await fetchContentFile();                  // 3. the file on the server
-    if(raw) listSource = "content.txt";
-  }
-
+  if(!raw){ raw = await fetchContentFile(); if(raw) listSource = "content.txt"; }
   if(!raw){ raw = DEFAULTS; listSource = "samples"; }
 
   const p = await store.get("dictee:prefs");
+  let prefs = null;
   if(p){ try{ prefs = JSON.parse(p); }catch(e){} }
   if(prefs){
     rate = prefs.rate ?? rate;
     repeats = prefs.repeats ?? repeats;
     chosenVoice = prefs.voice ?? "";
     if(prefs.hints === false) toggleHints(false);
+    if(prefs.swap) toggleSwap(true);
+    if(prefs.light) setTheme(true);
   }
   $("text").value = raw;
   savedRaw = raw;
@@ -319,91 +339,112 @@ async function load(){
   syncLabels();
   showSource();
 }
-
+async function savePrefs(){
+  await store.set("dictee:prefs", JSON.stringify({
+    rate, repeats, voice: chosenVoice,
+    hints: !document.body.classList.contains("no-hints"),
+    swap: document.body.classList.contains("swap"),
+    light: document.documentElement.classList.contains("light")
+  }));
+}
 function showSource(){
   const n = savedRaw.split("\n").filter(l => l.trim()).length;
   const label = {
-    link: "loaded from the link",
-    browser: "loaded from browser storage",
-    "content.txt": "loaded from content.txt",
-    samples: "sample sentences — nothing saved yet"
+    link:"from the link", browser:"from this browser",
+    "content.txt":"from content.txt", samples:"samples — nothing saved yet"
   }[listSource];
-  $("srcLine").textContent = `${n} sentences · ${label}` +
-    (storageWorks ? "" : " · browser storage BLOCKED here");
-}
-async function savePrefs(){
-  await store.set("dictee:prefs", JSON.stringify({
-    rate, repeats, voice: chosenVoice, hints: !document.body.classList.contains("no-hints")
-  }));
+  $("srcLine").textContent = `${n} sentences · ${label}` + (storageWorks ? "" : " · storage BLOCKED");
 }
 
-/* ---------- rendering ---------- */
+/* ---------- render ---------- */
 function render(raw){
   const lines = raw.split("\n").map(l => l.trim()).filter(Boolean);
   listEl.innerHTML = "";
   rows = [];
   if(!lines.length){
-    listEl.innerHTML = '<p class="empty">No sentences yet. Tap <strong>Edit list</strong> and paste the ones that keep slipping away.</p>';
+    listEl.innerHTML = '<p class="empty">No sentences yet. Tap <strong>Edit</strong> and paste the ones that keep slipping away.</p>';
     return;
   }
   lines.forEach((line, i) => {
     const parts = line.split(/\s+[=|]\s+/);
-    const fr = parts[0].trim();
-    const hint = parts.slice(1).join(" — ").trim();
+    const main = parts[0].trim();
+    const other = parts.slice(1).join(" — ").trim();
     const b = document.createElement("button");
     b.className = "row";
     b.type = "button";
     b.innerHTML = `<span class="num">${String(i+1).padStart(2,"0")}</span>
-      <span class="fr"></span>${hint ? '<span class="hint"></span>' : ""}`;
-    b.querySelector(".fr").textContent = fr;
-    if(hint) b.querySelector(".hint").textContent = hint;
+      <span class="fr"></span><span class="hint"></span>`;
+    b.querySelector(".fr").textContent = main;
+    b.querySelector(".hint").textContent = other || "—";
+    b.dataset.text = main;
     b.addEventListener("click", () => { stop(); speakRow(i); });
-    b.dataset.text = fr;
     listEl.appendChild(b);
     rows.push(b);
   });
+  if(cursor >= rows.length) cursor = 0;
+  if(focusMode) setCurrent(cursor, false);
 }
 
-/* ---------- speech ---------- */
-function frenchVoices(){
+/* ---------- voices ---------- */
+function langLabel(v){
+  if(/^fr/i.test(v.lang)) return "French";
+  if(/^en/i.test(v.lang)) return "English";
+  return v.lang;
+}
+function pickVoices(){
   const all = speechSynthesis.getVoices();
-  const fr = all.filter(v => /^fr/i.test(v.lang));
-  return fr.length ? fr : all;
+  const wanted = all.filter(v => /^(fr|en)/i.test(v.lang));
+  return wanted.length ? wanted : all;
 }
 function fillVoices(){
-  voices = frenchVoices();
+  voices = pickVoices();
   const sel = $("voice");
+  const prev = chosenVoice;
   sel.innerHTML = "";
-  if(!voices.length){
-    sel.innerHTML = '<option>Default</option>';
-    return;
-  }
+  if(!voices.length){ sel.innerHTML = "<option>Default</option>"; return; }
+  const groups = {French:[], English:[], Other:[]};
   voices.forEach(v => {
-    const o = document.createElement("option");
-    o.value = v.name;
-    o.textContent = v.name.replace(/\s*\(.*\)/,"") + (/fr/i.test(v.lang) ? "" : " ⚠");
-    sel.appendChild(o);
+    const l = langLabel(v);
+    (groups[l] || groups.Other).push(v);
   });
-  const preferred = voices.find(v => v.name === chosenVoice)
-    || voices.find(v => /thomas|amélie|amelie|audrey|denise|henri|marie/i.test(v.name))
-    || voices.find(v => /^fr/i.test(v.lang));
+  ["French","English","Other"].forEach(g => {
+    if(!groups[g].length) return;
+    const og = document.createElement("optgroup");
+    og.label = g === "Other" ? "Other languages" : g;
+    groups[g].forEach(v => {
+      const o = document.createElement("option");
+      o.value = v.name;
+      o.textContent = v.name.replace(/\s*\(.*?\)\s*/g,"").trim() + " (" + langLabel(v) + ")";
+      og.appendChild(o);
+    });
+    sel.appendChild(og);
+  });
+  const preferred =
+    voices.find(v => v.name === prev) ||
+    voices.find(v => /thomas|am[ée]lie|audrey|marie/i.test(v.name) && /^fr/i.test(v.lang)) ||
+    voices.find(v => /^fr/i.test(v.lang)) || voices[0];
   if(preferred){ chosenVoice = preferred.name; sel.value = preferred.name; }
-  if(!voices.some(v => /^fr/i.test(v.lang))){
-    warnEl.textContent = "No French voice found on this device. Install one in your system speech settings, then reload.";
+  const hasFr = voices.some(v => /^fr/i.test(v.lang));
+  const hasEn = voices.some(v => /^en/i.test(v.lang));
+  if(!hasFr || !hasEn){
+    warnEl.textContent = "Missing " + (!hasFr ? "a French" : "an English") +
+      " voice on this device — add one in Settings → Accessibility → Spoken Content → Voices.";
     warnEl.classList.add("show");
   } else warnEl.classList.remove("show");
 }
+
+/* ---------- speech ---------- */
 function utter(text){
   const u = new SpeechSynthesisUtterance(text);
   const v = voices.find(x => x.name === chosenVoice);
-  if(v) u.voice = v;
-  u.lang = v?.lang || "fr-FR";
+  if(v){ u.voice = v; u.lang = v.lang; }
   u.rate = rate;
   return u;
 }
 function speakRow(i, onDone){
   const row = rows[i];
   if(!row) return;
+  if(focusMode) setCurrent(i, false);
   row.classList.add("speaking");
   row.scrollIntoView({block:"nearest", behavior:"smooth"});
   let n = 0;
@@ -423,15 +464,16 @@ function stop(){
   playing = false;
   speechSynthesis.cancel();
   rows.forEach(r => r.classList.remove("speaking"));
-  $("playAll").textContent = "▶ Play all";
+  $("playAll").textContent = "▶ All";
   $("playAll").classList.remove("on");
 }
 function playAll(){
   if(playing){ stop(); return; }
+  if(!rows.length) return;
   playing = true;
   $("playAll").textContent = "■ Stop";
   $("playAll").classList.add("on");
-  let i = 0;
+  let i = focusMode ? cursor : 0;
   const next = () => {
     if(!playing || i >= rows.length){ stop(); return; }
     const cur = i++;
@@ -440,7 +482,27 @@ function playAll(){
   next();
 }
 
-/* ---------- controls ---------- */
+/* ---------- one-by-one ---------- */
+function setCurrent(i, speak){
+  if(!rows.length) return;
+  cursor = Math.max(0, Math.min(rows.length - 1, i));
+  rows.forEach((r, k) => r.classList.toggle("current", k === cursor));
+  $("count").textContent = (cursor + 1) + " / " + rows.length;
+  if(speak){ stop(); speakRow(cursor); }
+}
+function toggleFocus(on){
+  focusMode = on;
+  document.body.classList.toggle("focus", on);
+  $("focus").setAttribute("aria-pressed", String(on));
+  stop();
+  if(on) setCurrent(cursor, false);
+  else rows.forEach(r => r.classList.remove("current"));
+}
+$("prev").onclick = () => setCurrent(cursor - 1, true);
+$("next").onclick = () => setCurrent(cursor + 1, true);
+$("focus").onclick = () => toggleFocus(!focusMode);
+
+/* ---------- toggles ---------- */
 function syncLabels(){
   $("rateLabel").textContent = rate.toFixed(1) + "×";
   $("repLabel").textContent = "×" + repeats;
@@ -449,14 +511,31 @@ function toggleHints(on){
   document.body.classList.toggle("no-hints", !on);
   $("hints").setAttribute("aria-pressed", String(on));
 }
+function toggleSwap(on){
+  document.body.classList.toggle("swap", on);
+  $("swap").setAttribute("aria-pressed", String(on));
+}
+function setTheme(light){
+  document.documentElement.classList.toggle("light", light);
+  $("theme").textContent = light ? "☾" : "☀";
+  $("theme").setAttribute("aria-label", light ? "Switch to dark mode" : "Switch to light mode");
+  const meta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+  if(meta) meta.setAttribute("content", light ? "default" : "black");
+}
+$("theme").onclick = () => {
+  setTheme(!document.documentElement.classList.contains("light"));
+  savePrefs();
+};
+$("swap").onclick = () => { toggleSwap(!document.body.classList.contains("swap")); savePrefs(); };
+$("hints").onclick = () => { toggleHints(document.body.classList.contains("no-hints")); savePrefs(); };
 $("rateUp").onclick = () => { rate = Math.min(1.6, +(rate+0.1).toFixed(1)); syncLabels(); savePrefs(); };
 $("rateDown").onclick = () => { rate = Math.max(0.4, +(rate-0.1).toFixed(1)); syncLabels(); savePrefs(); };
 $("repUp").onclick = () => { repeats = Math.min(5, repeats+1); syncLabels(); savePrefs(); };
 $("repDown").onclick = () => { repeats = Math.max(1, repeats-1); syncLabels(); savePrefs(); };
 $("voice").onchange = e => { chosenVoice = e.target.value; savePrefs(); };
-$("hints").onclick = () => { toggleHints(document.body.classList.contains("no-hints")); savePrefs(); };
 $("playAll").onclick = playAll;
-let savedRaw = "";
+
+/* ---------- editor ---------- */
 function closeEditor(){ $("text").value = savedRaw; $("editor").classList.remove("open"); }
 $("edit").onclick = () => { stop(); $("text").value = savedRaw; $("editor").classList.add("open"); };
 $("close").onclick = closeEditor;
@@ -471,49 +550,41 @@ $("save").onclick = async () => {
   if(!ok) flash("Couldn't save — use 🔗 Save to link instead.");
 };
 document.addEventListener("keydown", e => {
-  if(e.key === "Escape" && $("editor").classList.contains("open")) closeEditor();
+  if(e.key === "Escape" && $("editor").classList.contains("open")){ closeEditor(); return; }
+  if($("editor").classList.contains("open") || !focusMode) return;
+  if(e.key === "ArrowRight"){ e.preventDefault(); setCurrent(cursor + 1, true); }
+  if(e.key === "ArrowLeft"){ e.preventDefault(); setCurrent(cursor - 1, true); }
+  if(e.key === " "){ e.preventDefault(); stop(); speakRow(cursor); }
 });
 
-/* ---------- import / export ---------- */
+/* ---------- import / export / link ---------- */
 $("export").onclick = () => {
   const raw = $("text").value;
   if(!raw.trim()){ flash("Nothing to export yet."); return; }
   const blob = new Blob([raw], {type:"text/plain;charset=utf-8"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url;
-  a.download = "content.txt";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  a.href = url; a.download = "content.txt";
+  document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 };
-
 $("import").onclick = () => $("file").click();
-
 let pendingImport = null;
-
 $("file").onchange = async e => {
   const f = e.target.files && e.target.files[0];
   e.target.value = "";
   if(!f) return;
   let raw;
-  try{
-    raw = (await f.text()).replace(/\r\n?/g, "\n").trim();
-  }catch(err){
-    flash("Couldn't read that file. Plain .txt works best.");
-    return;
-  }
+  try{ raw = (await f.text()).replace(/\r\n?/g,"\n").trim(); }
+  catch(err){ flash("Couldn't read that file. Plain .txt works best."); return; }
   if(!raw){ flash("That file was empty — nothing imported."); return; }
   const n = raw.split("\n").filter(l => l.trim()).length;
   const existing = $("text").value.split("\n").filter(l => l.trim()).length;
   if(!existing){ applyImport(raw, f.name, n); return; }
-  pendingImport = {raw, name: f.name, n};
-  $("confirmText").textContent =
-    `Replace all ${existing} sentence${existing === 1 ? "" : "s"} with ${n} from ${f.name}?`;
+  pendingImport = {raw, name:f.name, n};
+  $("confirmText").textContent = `Replace all ${existing} sentence${existing===1?"":"s"} with ${n} from ${f.name}?`;
   $("confirmBar").classList.add("show");
 };
-
 $("confirmNo").onclick = () => { pendingImport = null; $("confirmBar").classList.remove("show"); };
 $("confirmYes").onclick = () => {
   if(!pendingImport) return;
@@ -522,19 +593,17 @@ $("confirmYes").onclick = () => {
   $("confirmBar").classList.remove("show");
   applyImport(raw, name, n);
 };
-
 async function applyImport(raw, name, n){
   $("text").value = raw;
   savedRaw = raw;
+  cursor = 0;
   render(raw);
   const ok = await store.set("dictee:sentences", raw);
   listSource = ok ? "browser" : "samples";
   showSource();
-  flash(ok
-    ? `Imported ${n} sentence${n === 1 ? "" : "s"}. Tap 🔗 Save to link to make it permanent on iPhone.`
-    : `Imported ${n} sentence${n === 1 ? "" : "s"}, but this browser blocks storage — tap 🔗 Save to link.`);
+  flash(ok ? `Imported ${n} sentence${n===1?"":"s"}. Tap 🔗 Save to link to make it permanent on iPhone.`
+           : `Imported ${n}, but this browser blocks storage — tap 🔗 Save to link.`);
 }
-
 $("link").onclick = () => {
   const raw = $("text").value.trim();
   if(!raw){ flash("Nothing to save yet."); return; }
@@ -543,30 +612,25 @@ $("link").onclick = () => {
   render(raw);
   listSource = "link";
   showSource();
-  flash("Saved into this page's address. Now: Share → Add to Home Screen, and delete the old icon. That copy can't be cleared by iOS.");
+  flash("Saved into this page's address. Now Share → Add to Home Screen, and delete the old icon.");
 };
-
 $("reload").onclick = async () => {
-  const txt = await fetchContentFile();
-  if(!txt){ flash("No content.txt found next to this page (or it's empty)."); return; }
+  const t = await fetchContentFile();
+  if(!t){ flash("No content.txt found next to this page (or it's empty)."); return; }
   await store.del("dictee:sentences");
-  $("text").value = txt;
-  savedRaw = txt;
-  render(txt);
-  const n = txt.split("\n").filter(l => l.trim()).length;
-  flash(`Reloaded ${n} sentence${n === 1 ? "" : "s"} from content.txt.`);
+  $("text").value = t; savedRaw = t; cursor = 0; render(t);
+  listSource = "content.txt"; showSource();
+  flash(`Reloaded ${t.split("\n").filter(l=>l.trim()).length} sentences from content.txt.`);
 };
-
 function flash(msg){
-  const inEditor = $("editor").classList.contains("open");
-  const el = inEditor ? $("panelMsg") : warnEl;
+  const el = $("editor").classList.contains("open") ? $("panelMsg") : warnEl;
   el.textContent = msg;
   el.classList.add("show");
   clearTimeout(flash.t);
-  flash.t = setTimeout(() => el.classList.remove("show"), 5000);
+  flash.t = setTimeout(() => el.classList.remove("show"), 5500);
 }
 
-/* iOS needs one utterance from a real tap before it will speak */
+/* iOS: one silent utterance from a real tap unlocks speech */
 document.addEventListener("touchstart", () => {
   if(unlocked) return;
   unlocked = true;
